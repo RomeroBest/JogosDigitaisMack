@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import math
 from pygame.locals import QUIT, KEYDOWN, K_SPACE
 
 # Inicializa o Pygame
@@ -17,17 +18,21 @@ pygame.display.set_caption("Nave Espacial")
 
 # Classe para gerenciar os disparos
 class Disparo(pygame.sprite.Sprite):
-    def __init__(self, position):
+    def __init__(self, position, angle):
         super().__init__()
         self.image = pygame.Surface((10, 5))
         self.image.fill((255, 0, 0))  # Cor do disparo
-        self.rect = self.image.get_rect(midtop=position)
+        self.rect = self.image.get_rect(center=position)
         self.speed = 10
+        self.angle = angle
+        self.image = pygame.transform.rotate(self.image, -angle)
 
     def update(self):
-        self.rect.y -= self.speed
+        # Movimento do disparo na direção da nave
+        self.rect.x += self.speed * math.cos(math.radians(self.angle))
+        self.rect.y -= self.speed * math.sin(math.radians(self.angle))
         # Remove o disparo quando ele sair da tela
-        if self.rect.bottom < 0:
+        if not tela.get_rect().colliderect(self.rect):
             self.kill()
 
 # Classe para o objeto (astro) que se move aleatoriamente
@@ -35,16 +40,17 @@ class Astro(pygame.sprite.Sprite):
     def __init__(self, image_path):
         super().__init__()
         self.image = pygame.image.load(image_path).convert_alpha()
-        self.image = pygame.transform.scale(self.image, (50, 50))  # Ajusta o tamanho
+        self.image = pygame.transform.scale(self.image, (100, 100))  # Ajusta o tamanho
         self.rect = self.image.get_rect(
             center=(random.randint(0, LARGURA_TELA), random.randint(0, ALTURA_TELA))
         )
-        self.speed = random.randint(1, 4)
+        self.speed = random.uniform(2.5, 2)
+        self.angle = random.uniform(0, 2 * math.pi)
 
     def update(self):
-        # Movimento aleatório do astro
-        self.rect.x += random.choice([-1, 1]) * self.speed
-        self.rect.y += random.choice([-1, 1]) * self.speed
+        # Movimento contínuo do astro
+        self.rect.x += self.speed * math.cos(self.angle)
+        self.rect.y += self.speed * math.sin(self.angle)
 
         # O astro reaparece nas extremidades opostas
         if self.rect.left > LARGURA_TELA:
@@ -85,8 +91,11 @@ class NaveEspacial(pygame.sprite.Sprite):
         if teclas[pygame.K_RIGHT]:
             self.direction -= 5
         if teclas[pygame.K_UP]:
-            self.rect.x += self.speed * pygame.math.Vector2(1, 0).rotate(-self.direction).x
-            self.rect.y += self.speed * pygame.math.Vector2(1, 0).rotate(-self.direction).y
+            self.rect.x += self.speed * math.cos(math.radians(self.direction))
+            self.rect.y -= self.speed * math.sin(math.radians(self.direction))
+        if teclas[pygame.K_DOWN]:
+            self.rect.x -= self.speed * math.cos(math.radians(self.direction))
+            self.rect.y += self.speed * math.sin(math.radians(self.direction))
 
         # Rotacionar a nave na direção em que ela está apontando
         self.image = pygame.transform.rotate(self.original_image, self.direction)
@@ -143,7 +152,7 @@ def jogo():
             if evento.type == KEYDOWN:
                 if evento.key == K_SPACE:
                     # Criar um disparo da posição da nave
-                    tiro = Disparo(nave.rect.center)
+                    tiro = Disparo(nave.rect.center, nave.direction)
                     tiros.add(tiro)
                     todas_as_sprites.add(tiro)
 
