@@ -1,5 +1,7 @@
 import pygame
 import sys
+import random
+from pygame.locals import QUIT, KEYDOWN, K_SPACE
 
 # Inicializa o Pygame
 pygame.init()
@@ -8,81 +10,148 @@ pygame.init()
 LARGURA_TELA = 800
 ALTURA_TELA = 600
 PRETO = (0, 0, 0)
-BRANCO = (255, 255, 255)
 
 # Configurando a tela do jogo
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
 pygame.display.set_caption("Nave Espacial")
 
+# Classe para gerenciar os disparos
+class Disparo(pygame.sprite.Sprite):
+    def __init__(self, position):
+        super().__init__()
+        self.image = pygame.Surface((10, 5))
+        self.image.fill((255, 0, 0))  # Cor do disparo
+        self.rect = self.image.get_rect(midtop=position)
+        self.speed = 10
+
+    def update(self):
+        self.rect.y -= self.speed
+        # Remove o disparo quando ele sair da tela
+        if self.rect.bottom < 0:
+            self.kill()
+
+# Classe para o objeto (astro) que se move aleatoriamente
+class Astro(pygame.sprite.Sprite):
+    def __init__(self, image_path):
+        super().__init__()
+        self.image = pygame.image.load(image_path).convert_alpha()
+        self.image = pygame.transform.scale(self.image, (50, 50))  # Ajusta o tamanho
+        self.rect = self.image.get_rect(
+            center=(random.randint(0, LARGURA_TELA), random.randint(0, ALTURA_TELA))
+        )
+        self.speed = random.randint(1, 4)
+
+    def update(self):
+        # Movimento aleatório do astro
+        self.rect.x += random.choice([-1, 1]) * self.speed
+        self.rect.y += random.choice([-1, 1]) * self.speed
+
+        # O astro reaparece nas extremidades opostas
+        if self.rect.left > LARGURA_TELA:
+            self.rect.right = 0
+        if self.rect.right < 0:
+            self.rect.left = LARGURA_TELA
+        if self.rect.top > ALTURA_TELA:
+            self.rect.bottom = 0
+        if self.rect.bottom < 0:
+            self.rect.top = ALTURA_TELA
+
 # Classe NaveEspacial herda de pygame.sprite.Sprite
 class NaveEspacial(pygame.sprite.Sprite):
-    def __init__(self, name, position=(400, 300), speed=5):
+    def __init__(self, name, image_path, position=(400, 300), speed=5):
         super().__init__()
         
         # Atributos da nave
         self.name = name
         self.alive = True
         self.position = position
-        self.direction = 0  # Inicialmente em 0 graus
         self.speed = speed
+        self.direction = 0  # Direção da nave em graus
         self.shield = 100
         self.energy = 100
         
-        # Desenho da nave (usando um retângulo)
-        self.image = pygame.Surface((50, 30))
-        self.image.fill(BRANCO)
-        
-        # Definir o rect para controlar a posição da nave
+        # Carrega a imagem da nave
+        self.original_image = pygame.image.load(image_path).convert_alpha()
+        self.original_image = pygame.transform.scale(self.original_image, (150, 110))
+        self.image = self.original_image
         self.rect = self.image.get_rect(center=self.position)
 
     def update(self):
-        # Movimentação com base nas teclas pressionadas
+        # Movimento da nave
         teclas = pygame.key.get_pressed()
-        
+
         if teclas[pygame.K_LEFT]:
-            self.rect.x -= self.speed
+            self.direction += 5
         if teclas[pygame.K_RIGHT]:
-            self.rect.x += self.speed
+            self.direction -= 5
         if teclas[pygame.K_UP]:
-            self.rect.y -= self.speed
-        if teclas[pygame.K_DOWN]:
-            self.rect.y += self.speed
-        
-        # Manter a nave dentro dos limites da tela
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > LARGURA_TELA:
-            self.rect.right = LARGURA_TELA
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > ALTURA_TELA:
-            self.rect.bottom = ALTURA_TELA
+            self.rect.x += self.speed * pygame.math.Vector2(1, 0).rotate(-self.direction).x
+            self.rect.y += self.speed * pygame.math.Vector2(1, 0).rotate(-self.direction).y
+
+        # Rotacionar a nave na direção em que ela está apontando
+        self.image = pygame.transform.rotate(self.original_image, self.direction)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+        # Permitir que a nave atravesse a tela
+        if self.rect.left > LARGURA_TELA:
+            self.rect.right = 0
+        if self.rect.right < 0:
+            self.rect.left = LARGURA_TELA
+        if self.rect.top > ALTURA_TELA:
+            self.rect.bottom = 0
+        if self.rect.bottom < 0:
+            self.rect.top = ALTURA_TELA
 
 # Função principal do jogo
 def jogo():
     # Configura o relógio para controlar o FPS
     relogio = pygame.time.Clock()
 
-    # Criação da nave
-    nave = NaveEspacial(name="Falcon", position=(400, 300), speed=5)
+    # Caminho para a imagem da nave (Millennium Falcon)
+    caminho_imagem_nave = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\MillenniumFalcon.png"  # Substitua pelo caminho correto
 
-    # Criando um grupo de sprites para facilitar o update e desenho
+    # Caminho para a imagem de fundo (galáxia)
+    caminho_fundo = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\galaxia.jpg"  # Substitua pelo caminho correto
+
+    # Caminho para a imagem do astro (por exemplo, um planeta)
+    caminho_astro = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\asteroide.png"  # Substitua pelo caminho correto
+
+    # Carrega a imagem de fundo
+    fundo = pygame.image.load(caminho_fundo).convert()
+    fundo = pygame.transform.scale(fundo, (LARGURA_TELA, ALTURA_TELA))
+
+    # Criação da nave
+    nave = NaveEspacial(name="Falcon", image_path=caminho_imagem_nave, position=(400, 300), speed=5)
+
+    # Criação do astro
+    astro = Astro(image_path=caminho_astro)
+
+    # Grupos de sprites
     todas_as_sprites = pygame.sprite.Group()
     todas_as_sprites.add(nave)
+    todas_as_sprites.add(astro)
+
+    tiros = pygame.sprite.Group()
 
     # Loop principal do jogo
     while True:
         # Eventos
         for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
+            if evento.type == QUIT:
                 pygame.quit()
                 sys.exit()
+            if evento.type == KEYDOWN:
+                if evento.key == K_SPACE:
+                    # Criar um disparo da posição da nave
+                    tiro = Disparo(nave.rect.center)
+                    tiros.add(tiro)
+                    todas_as_sprites.add(tiro)
 
-        # Atualizar a nave
+        # Atualizar todos os sprites
         todas_as_sprites.update()
 
-        # Desenhar fundo da tela
-        tela.fill(PRETO)
+        # Desenhar o fundo
+        tela.blit(fundo, (0, 0))
 
         # Desenhar todos os sprites na tela
         todas_as_sprites.draw(tela)
