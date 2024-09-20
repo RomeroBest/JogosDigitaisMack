@@ -1,65 +1,53 @@
 import pygame
 import random
 
-def lerp(start, end, t):
-    return start + (end - start) * t
+# Constantes
+WIDTH, HEIGHT = 800, 600
+NUM_RECTANGLES = 6
 
-def lerp_color(color1, color2, t):
-    return tuple(lerp(c1, c2, t) for c1, c2 in zip(color1, color2))
+# Cores
+WHITE = (255, 255, 255)
 
-def random_color():
-    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+def lerp(a, b, t):
+    """Função de lerp para interpolar entre dois valores."""
+    return a + (b - a) * t
 
-# Inicialização do Pygame
-pygame.init()
-width, height = 1000, 500
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Retângulos com Cores em Transição")
-clock = pygame.time.Clock()
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Retângulos com Cores Aleatórias")
+    clock = pygame.time.Clock()
 
-# Configuração dos retângulos
-num_rectangles = 6
-rectangle_width = width // 3
-rectangle_height = height // 2
-rectangles = []
+    rectangles = []
+    for i in range(NUM_RECTANGLES):
+        y = i * (HEIGHT // NUM_RECTANGLES)
+        height = HEIGHT // NUM_RECTANGLES
+        rectangle = pygame.Rect(0, y, WIDTH, height)
+        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        target_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        rectangles.append((rectangle, color, target_color))
 
-for i in range(num_rectangles):
-    x = (i % 3) * rectangle_width
-    y = (i // 3) * rectangle_height
-    start_color = random_color()
-    end_color = random_color()
-    rectangles.append({
-        'rect': pygame.Rect(x, y, rectangle_width, rectangle_height),
-        'start_color': start_color,
-        'end_color': end_color,
-        't': 0,
-        'direction': 1
-    })
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-# Loop principal
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+        screen.fill(WHITE)
 
-    # Atualizar cores
-    for rect in rectangles:
-        rect['t'] += 0.01 * rect['direction']
-        if rect['t'] >= 1 or rect['t'] <= 0:
-            rect['direction'] *= -1
-            if rect['t'] >= 1:
-                rect['start_color'] = rect['end_color']
-                rect['end_color'] = random_color()
-            rect['t'] = max(0, min(1, rect['t']))  # Garante que t fique entre 0 e 1
+        for i, (rectangle, color, target_color) in enumerate(rectangles):
+            t = (pygame.time.get_ticks() + i * 1000) / 3000
+            t = t % 1
+            new_color = (int(lerp(color[0], target_color[0], t)), int(lerp(color[1], target_color[1], t)), int(lerp(color[2], target_color[2], t)))
+            pygame.draw.rect(screen, new_color, rectangle)
 
-    # Desenhar retângulos
-    for rect in rectangles:
-        color = lerp_color(rect['start_color'], rect['end_color'], rect['t'])
-        pygame.draw.rect(screen, color, rect['rect'])
+            if t > 0.99:
+                rectangles[i] = (rectangle, target_color, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
 
-    # Atualizar a tela
-    pygame.display.flip()
-    clock.tick(60)
+        pygame.display.flip()
+        clock.tick(60)
 
-pygame.quit()
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()

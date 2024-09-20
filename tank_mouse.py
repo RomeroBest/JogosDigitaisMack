@@ -89,6 +89,7 @@ while running:
             if event.button == 1:  # Botão esquerdo do mouse
                 tank.fire(bullets)
 
+  
     mouse_pos = pygame.mouse.get_pos()  # Captura a posição atual do mouse
     tank.update(mouse_pos)  # Atualiza a posição e rotação do tanque
     bullets.update()  # Atualiza as posições dos projéteis

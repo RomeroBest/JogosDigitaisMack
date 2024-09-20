@@ -1,42 +1,49 @@
 import pygame
+import sys
 
-def create_rectangle(width, height, color, position):
-    surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    pygame.draw.rect(surface, color, (0, 0, width, height))
-    rect = surface.get_rect()
-    rect.topleft = position
-    return surface, rect
-
-def create_circle(radius, color, position):
-    diameter = radius * 2
-    surface = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
-    pygame.draw.circle(surface, color, (radius, radius), radius)
-    rect = surface.get_rect()
-    rect.topleft = position
-    return surface, rect
-
-# Exemplo de uso:
+# Inicializa o Pygame
 pygame.init()
-screen = pygame.display.set_mode((800, 600))
-clock = pygame.time.Clock()
 
-# Criando formas
-rect_surface, rect_rect = create_rectangle(100, 50, (255, 0, 0), (100, 100))
-circle_surface, circle_rect = create_circle(30, (0, 255, 0), (300, 200))
+# Define as dimensões da tela
+screen_width = 800
+screen_height = 600
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption("Exemplo de Geometrias")
 
-running = True
-while running:
+# Função para criar um retângulo
+def create_rectangle(width, height, color, position):
+    rect_surface = pygame.Surface((width, height))
+    rect_surface.fill(color)
+    return rect_surface, position
+
+# Função para criar um círculo
+def create_circle(radius, color, position):
+    circle_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    pygame.draw.circle(circle_surface, color, (radius, radius), radius)
+    return circle_surface, position
+
+# Cores
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+
+# Loop principal
+while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            pygame.quit()
+            sys.exit()
 
-    screen.fill((255, 255, 255))  # Fundo branco
-    
-    # Desenhando as formas
-    screen.blit(rect_surface, rect_rect)
-    screen.blit(circle_surface, circle_rect)
+    # Preenche o fundo
+    screen.fill(WHITE)
 
+    # Cria e desenha um retângulo
+    rect_surface, rect_position = create_rectangle(200, 100, BLUE, (100, 100))
+    screen.blit(rect_surface, rect_position)
+
+    # Cria e desenha um círculo
+    circle_surface, circle_position = create_circle(50, RED, (400, 300))
+    screen.blit(circle_surface, circle_position)
+
+    # Atualiza a tela
     pygame.display.flip()
-    clock.tick(60)
-
-pygame.quit()

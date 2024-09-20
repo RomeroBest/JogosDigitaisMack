@@ -1,7 +1,19 @@
 import pygame
 import random
 
+# Constantes
+WIDTH, HEIGHT = 800, 600
+NUM_SHAPES = 20
+MIN_SIZE = 20
+MAX_SIZE = 100
+MIN_RADIUS = 10
+MAX_RADIUS = 50
+
+# Cores
+WHITE = (255, 255, 255)
+
 def create_rectangle(width, height, color, position):
+    #Cria um retângulo com a largura, altura, cor e posição especificadas
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     pygame.draw.rect(surface, color, (0, 0, width, height))
     rect = surface.get_rect()
@@ -9,6 +21,7 @@ def create_rectangle(width, height, color, position):
     return surface, rect
 
 def create_circle(radius, color, position):
+    #Cria um círculo com o raio, cor e posição especificados.
     diameter = radius * 2
     surface = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
     pygame.draw.circle(surface, color, (radius, radius), radius)
@@ -17,67 +30,68 @@ def create_circle(radius, color, position):
     return surface, rect
 
 def random_color():
+    #Gera uma cor aleatória.
     return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
 def random_position(max_x, max_y):
+    #Gera uma posição aleatória dentro da área especificada.
     return (random.randint(0, max_x), random.randint(0, max_y))
 
 def random_size(min_size, max_size):
+    #Gera um tamanho aleatório dentro do intervalo especificado
     return random.randint(min_size, max_size)
 
-# Inicialização do Pygame
-pygame.init()
-width, height = 800, 600
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Formas Geométricas Aleatórias")
-clock = pygame.time.Clock()
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Formas Geométricas Aleatórias")
+    clock = pygame.time.Clock()
 
-# Lista para armazenar as formas
-shapes = []
+    shapes = []
 
-# Gerar formas aleatórias
-num_shapes = 20
-for _ in range(num_shapes):
-    if random.choice([True, False]):  # 50% de chance para retângulo ou círculo
-        w = random_size(20, 100)
-        h = random_size(20, 100)
-        rect_surface, rect_rect = create_rectangle(w, h, random_color(), random_position(width - w, height - h))
-        shapes.append((rect_surface, rect_rect))
-    else:
-        r = random_size(10, 50)
-        circle_surface, circle_rect = create_circle(r, random_color(), random_position(width - 2*r, height - 2*r))
-        shapes.append((circle_surface, circle_rect))
+    for _ in range(NUM_SHAPES):
+        if random.choice([True, False]):
+            width = random_size(MIN_SIZE, MAX_SIZE)
+            height = random_size(MIN_SIZE, MAX_SIZE)
+            rect_surface, rect_rect = create_rectangle(width, height, random_color(), random_position(WIDTH - width, HEIGHT - height))
+            shapes.append((rect_surface, rect_rect))
+        else:
+            radius = random_size(MIN_RADIUS, MAX_RADIUS)
+            circle_surface, circle_rect = create_circle(radius, random_color(), random_position(WIDTH - 2 * radius, HEIGHT - 2 * radius))
+            shapes.append((circle_surface, circle_rect))
 
-# Loop principal
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                # Regerar formas quando a barra de espaço é pressionada
-                shapes.clear()
-                for _ in range(num_shapes):
-                    if random.choice([True, False]):
-                        w = random_size(20, 100)
-                        h = random_size(20, 100)
-                        rect_surface, rect_rect = create_rectangle(w, h, random_color(), random_position(width - w, height - h))
-                        shapes.append((rect_surface, rect_rect))
-                    else:
-                        r = random_size(10, 50)
-                        circle_surface, circle_rect = create_circle(r, random_color(), random_position(width - 2*r, height - 2*r))
-                        shapes.append((circle_surface, circle_rect))
+    running = True
+    transition_time = 0
+    transition_duration = 2000  # 2000 milissegundos = 2 segundos
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-    # Limpar a tela
-    screen.fill((255, 255, 255))  # Fundo branco
-    
-    # Desenhar todas as formas
-    for shape_surface, shape_rect in shapes:
-        screen.blit(shape_surface, shape_rect)
+        screen.fill(WHITE)
 
-    # Atualizar a tela
-    pygame.display.flip()
-    clock.tick(60)
+        current_time = pygame.time.get_ticks()
+        if current_time - transition_time >= transition_duration:
+            transition_time = current_time
+            for i, (shape_surface, shape_rect) in enumerate(shapes):
+                if random.choice([True, False]):
+                    width = random_size(MIN_SIZE, MAX_SIZE)
+                    height = random_size(MIN_SIZE, MAX_SIZE)
+                    rect_surface, rect_rect = create_rectangle(width, height, random_color(), random_position(WIDTH - width, HEIGHT - height))
+                    shapes[i] = (rect_surface, rect_rect)
+                else:
+                    radius = random_size(MIN_RADIUS, MAX_RADIUS)
+                    circle_surface, circle_rect = create_circle(radius, random_color(), random_position(WIDTH - 2 * radius, HEIGHT - 2 * radius))
+                    shapes[i] = (circle_surface, circle_rect)
 
-pygame.quit()
+        for shape_surface, shape_rect in shapes:
+            shape_surface.set_alpha(int(255 * (1 - (current_time - transition_time) / transition_duration)))
+            screen.blit(shape_surface, shape_rect)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()

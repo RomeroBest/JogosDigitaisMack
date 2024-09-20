@@ -1,64 +1,46 @@
 import pygame
+import random
 
-def lerp(start, end, t):
-    return start + (end - start) * t
+# Constantes
+WIDTH, HEIGHT = 800, 600
+NUM_RECTANGLES = 6
 
-def lerp_color(color1, color2, t):
-    return tuple(int(lerp(c1, c2, t)) for c1, c2 in zip(color1, color2))
+# Cores
+WHITE = (255, 255, 255)
 
-# Inicialização do Pygame
-pygame.init()
-width, height = 1000, 500
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Retângulos Interativos com Cores Persistentes")
-clock = pygame.time.Clock()
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Retângulos com Cores Aleatórias")
+    clock = pygame.time.Clock()
 
-# Configuração dos retângulos
-num_rectangles = 6
-rectangle_width = width // 3
-rectangle_height = height // 2
-rectangles = []
+    rectangles = []
+    for i in range(NUM_RECTANGLES):
+        y = i * (HEIGHT // NUM_RECTANGLES)
+        height = HEIGHT // NUM_RECTANGLES
+        rectangle = pygame.Rect(0, y, WIDTH, height)
+        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        rectangles.append((rectangle, color))
 
-for i in range(num_rectangles):
-    x = (i % 3) * rectangle_width
-    y = (i // 3) * rectangle_height
-    rectangles.append({
-        'rect': pygame.Rect(x, y, rectangle_width, rectangle_height),
-        'color': (128, 128, 128),  # Cor inicial cinza
-        'last_color': None,  # Última cor quando o mouse estava sobre o retângulo
-        'hover': False  # Flag para indicar se o mouse está sobre o retângulo
-    })
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-# Loop principal
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.MOUSEMOTION:
-            mouse_pos = event.pos
-            for rect in rectangles:
-                if rect['rect'].collidepoint(mouse_pos):
-                    if not rect['hover']:
-                        rect['hover'] = True
-                        # Calcula a nova cor apenas quando o mouse entra no retângulo
-                        rel_x = (mouse_pos[0] - rect['rect'].left) / rect['rect'].width
-                        rel_y = (mouse_pos[1] - rect['rect'].top) / rect['rect'].height
-                        red_to_green = lerp_color((255, 0, 0), (0, 255, 0), rel_x)
-                        new_color = lerp_color(red_to_green, (0, 0, 255), rel_y)
-                        rect['last_color'] = new_color
-                        rect['color'] = new_color
-                else:
-                    rect['hover'] = False
-                    if rect['last_color']:
-                        rect['color'] = rect['last_color']
+        screen.fill(WHITE)
 
-    # Desenhar retângulos
-    for rect in rectangles:
-        pygame.draw.rect(screen, rect['color'], rect['rect'])
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        for i, (rectangle, color) in enumerate(rectangles):
+            if rectangle.collidepoint(mouse_x, mouse_y):
+                new_color = (int((mouse_x / WIDTH) * 255), int((mouse_y / HEIGHT) * 255), int(((mouse_x + mouse_y) / (WIDTH + HEIGHT)) * 255))
+                rectangles[i] = (rectangle, new_color)
+            pygame.draw.rect(screen, rectangles[i][1], rectangle)
 
-    # Atualizar a tela
-    pygame.display.flip()
-    clock.tick(60)
+        pygame.display.flip()
+        clock.tick(60)
 
-pygame.quit()
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
