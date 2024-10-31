@@ -4,173 +4,264 @@ import random
 import math
 from pygame.locals import QUIT, KEYDOWN, K_SPACE
 
-# Inicializa o Pygame
+# Inicializar Pygame
 pygame.init()
 
-# Definindo constantes
-LARGURA_TELA = 800
-ALTURA_TELA = 600
-PRETO = (0, 0, 0)
+# Definir constantes
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 
-# Configurando a tela do jogo
-tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
-pygame.display.set_caption("Nave Espacial")
+# Configurar a tela do jogo
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Space Ship Game")
 
-# Classe para gerenciar os disparos
-class Disparo(pygame.sprite.Sprite):
+# Carregar imagens
+explosion_images = [pygame.image.load(r"C:\Users\jorja\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\explosao.gif").convert_alpha() for i in range(1, 6)]
+game_over_image = pygame.image.load(r"C:\Users\jorja\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\gameover.gif").convert_alpha()
+game_over_image = pygame.transform.scale(game_over_image, (400, 200))  # Adjust size as needed
+
+# Classe para a nave espacial
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, size):
+        super().__init__()
+        self.size = size
+        self.images = [pygame.transform.scale(img, (size, size)) for img in explosion_images]
+        self.index = 0
+        self.image = self.images[self.index]
+        self.rect = self.image.get_rect(center=center)
+        self.frame_count = 0
+
+    def update(self):
+        self.frame_count += 1
+        if self.frame_count >= 5:  # Trocar quadro a cada 5 quadros do jogo
+            self.frame_count = 0
+            self.index += 1
+            if self.index >= len(self.images):
+                self.kill()
+            else:
+                self.image = self.images[self.index]
+                self.rect = self.image.get_rect(center=self.rect.center)
+
+# Classe para o tiro para o jogo de nave espacial
+class Shot(pygame.sprite.Sprite):
     def __init__(self, position, angle):
         super().__init__()
         self.image = pygame.Surface((10, 5))
-        self.image.fill((255, 0, 0))  # Cor do disparo
+        self.image.fill((255, 0, 0))  # Shot color
         self.rect = self.image.get_rect(center=position)
         self.speed = 10
         self.angle = angle
         self.image = pygame.transform.rotate(self.image, -angle)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
-        # Movimento do disparo na direção da nave
         self.rect.x += self.speed * math.cos(math.radians(self.angle))
         self.rect.y -= self.speed * math.sin(math.radians(self.angle))
-        # Remove o disparo quando ele sair da tela
-        if not tela.get_rect().colliderect(self.rect):
+        if not screen.get_rect().colliderect(self.rect):
             self.kill()
 
-# Classe para o objeto (astro) que se move aleatoriamente
-class Astro(pygame.sprite.Sprite):
+# Classe para o asteroide para o jogo de nave espacial
+class Asteroid(pygame.sprite.Sprite):
     def __init__(self, image_path):
         super().__init__()
+        self.size = random.randint(50, 120)  # Variable size
         self.image = pygame.image.load(image_path).convert_alpha()
-        self.image = pygame.transform.scale(self.image, (100, 100))  # Ajusta o tamanho
-        self.rect = self.image.get_rect(
-            center=(random.randint(0, LARGURA_TELA), random.randint(0, ALTURA_TELA))
-        )
-        self.speed = random.uniform(2.5, 2)
-        self.angle = random.uniform(0, 2 * math.pi)
+        self.image = pygame.transform.scale(self.image, (self.size, self.size))
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+        self.reset_position()
+
+    def reset_position(self):
+        # Escolha uma parte da tela para a nave ser respawnada aleatória
+        edge = random.choice(['top', 'bottom', 'left', 'right'])
+        if edge == 'top':
+            self.rect.bottom = 0
+            self.rect.left = random.randint(0, SCREEN_WIDTH - self.rect.width)
+            angle = random.uniform(math.pi/4, 3*math.pi/4)
+        elif edge == 'bottom':
+            self.rect.top = SCREEN_HEIGHT
+            self.rect.left = random.randint(0, SCREEN_WIDTH - self.rect.width)
+            angle = random.uniform(5*math.pi/4, 7*math.pi/4)
+        elif edge == 'left':
+            self.rect.right = 0
+            self.rect.top = random.randint(0, SCREEN_HEIGHT - self.rect.height)
+            angle = random.uniform(-math.pi/4, math.pi/4)
+        else:  # right
+            self.rect.left = SCREEN_WIDTH
+            self.rect.top = random.randint(0, SCREEN_HEIGHT - self.rect.height)
+            angle = random.uniform(3*math.pi/4, 5*math.pi/4)
+        
+        self.speed = random.uniform(2, 5)
+        self.dx = self.speed * math.cos(angle)
+        self.dy = self.speed * math.sin(angle)
 
     def update(self):
-        # Movimento contínuo do astro
-        self.rect.x += self.speed * math.cos(self.angle)
-        self.rect.y += self.speed * math.sin(self.angle)
+        self.rect.x += self.dx
+        self.rect.y += self.dy
 
-        # O astro reaparece nas extremidades opostas
-        if self.rect.left > LARGURA_TELA:
-            self.rect.right = 0
-        if self.rect.right < 0:
-            self.rect.left = LARGURA_TELA
-        if self.rect.top > ALTURA_TELA:
-            self.rect.bottom = 0
-        if self.rect.bottom < 0:
-            self.rect.top = ALTURA_TELA
+        # Se o asteroide estiver fora da tela, redefina sua posição 
+        if (self.rect.right < 0 or self.rect.left > SCREEN_WIDTH or
+            self.rect.bottom < 0 or self.rect.top > SCREEN_HEIGHT):
+            self.reset_position()
 
-# Classe NaveEspacial herda de pygame.sprite.Sprite
-class NaveEspacial(pygame.sprite.Sprite):
+# Define a classe Spaceship que herda de Sprite quando criada  
+class Spaceship(pygame.sprite.Sprite):
     def __init__(self, name, image_path, position=(400, 300), speed=5):
         super().__init__()
-        
-        # Atributos da nave
         self.name = name
         self.alive = True
         self.position = position
         self.speed = speed
-        self.direction = 0  # Direção da nave em graus
-        self.shield = 100
+        self.direction = 0  # Direção do nave em graus
+        self.shield = 300  # Valor inicial do escudo
         self.energy = 100
-        
-        # Carrega a imagem da nave
+
         self.original_image = pygame.image.load(image_path).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (150, 110))
         self.image = self.original_image
         self.rect = self.image.get_rect(center=self.position)
+        
+        # Crie uma máscara para detecção precisa de colisões 
+        self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
-        # Movimento da nave
-        teclas = pygame.key.get_pressed()
+        keys = pygame.key.get_pressed()
 
-        if teclas[pygame.K_LEFT]:
+        if keys[pygame.K_LEFT]:
             self.direction += 5
-        if teclas[pygame.K_RIGHT]:
+        if keys[pygame.K_RIGHT]:
             self.direction -= 5
-        if teclas[pygame.K_UP]:
+        if keys[pygame.K_UP]:
             self.rect.x += self.speed * math.cos(math.radians(self.direction))
             self.rect.y -= self.speed * math.sin(math.radians(self.direction))
-        if teclas[pygame.K_DOWN]:
+        if keys[pygame.K_DOWN]:
             self.rect.x -= self.speed * math.cos(math.radians(self.direction))
             self.rect.y += self.speed * math.sin(math.radians(self.direction))
 
-        # Rotacionar a nave na direção em que ela está apontando
+        # Gire a imagem do nave
         self.image = pygame.transform.rotate(self.original_image, self.direction)
         self.rect = self.image.get_rect(center=self.rect.center)
+        self.mask = pygame.mask.from_surface(self.image)
 
-        # Permitir que a nave atravesse a tela
-        if self.rect.left > LARGURA_TELA:
+        # Envolver as bordas da tela
+        if self.rect.left > SCREEN_WIDTH:
             self.rect.right = 0
         if self.rect.right < 0:
-            self.rect.left = LARGURA_TELA
-        if self.rect.top > ALTURA_TELA:
+            self.rect.left = SCREEN_WIDTH
+        if self.rect.top > SCREEN_HEIGHT:
             self.rect.bottom = 0
         if self.rect.bottom < 0:
-            self.rect.top = ALTURA_TELA
+            self.rect.top = SCREEN_HEIGHT
 
-# Função principal do jogo
-def jogo():
-    # Configura o relógio para controlar o FPS
-    relogio = pygame.time.Clock()
+    def lose_shield(self, damage):
+        self.shield -= damage
+        if self.shield <= 0:
+            self.shield = 0
+            self.alive = False
+            print("The ship has been destroyed!")
 
-    # Caminho para a imagem da nave (Millennium Falcon)
-    caminho_imagem_nave = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\MillenniumFalcon.png"  # Substitua pelo caminho correto
+# Iniciar o jogo de nave espacial
+def game():
+    clock = pygame.time.Clock()
 
-    # Caminho para a imagem de fundo (galáxia)
-    caminho_fundo = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\galaxia.jpg"  # Substitua pelo caminho correto
+    ship_image_path = r"C:\Users\jorja\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\MillenniumFalcon.png"
+    background_path = r"C:\Users\jorja\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\galaxia.jpg"
+    asteroid_path = r"C:\Users\jorja\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\asteroide.png"
 
-    # Caminho para a imagem do astro (por exemplo, um planeta)
-    caminho_astro = r"C:\Users\1168631\OneDrive\Programacao\ADS\2SEM\JOGOS DIGITAIS\CODIGOS\assets\asteroide.png"  # Substitua pelo caminho correto
+    background = pygame.image.load(background_path).convert()
+    background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    # Carrega a imagem de fundo
-    fundo = pygame.image.load(caminho_fundo).convert()
-    fundo = pygame.transform.scale(fundo, (LARGURA_TELA, ALTURA_TELA))
+    ship = Spaceship(name="Falcon", image_path=ship_image_path, position=(400, 300), speed=5)
 
-    # Criação da nave
-    nave = NaveEspacial(name="Falcon", image_path=caminho_imagem_nave, position=(400, 300), speed=5)
+    asteroids = pygame.sprite.Group()
+    all_sprites = pygame.sprite.Group()
+    all_sprites.add(ship)
 
-    # Criação do astro
-    astro = Astro(image_path=caminho_astro)
+    # Cria asteroides iniciais aleatórios
+    for _ in range(5):
+        asteroid = Asteroid(image_path=asteroid_path)
+        asteroids.add(asteroid)
+        all_sprites.add(asteroid)
 
-    # Grupos de sprites
-    todas_as_sprites = pygame.sprite.Group()
-    todas_as_sprites.add(nave)
-    todas_as_sprites.add(astro)
+    shots = pygame.sprite.Group()
+    explosions = pygame.sprite.Group()
 
-    tiros = pygame.sprite.Group()
-
-    # Loop principal do jogo
+    font = pygame.font.Font(None, 36)
+    game_over = False
+    # Loop principal do jogo 
     while True:
-        # Eventos
-        for evento in pygame.event.get():
-            if evento.type == QUIT:
+        for event in pygame.event.get():
+            if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
-            if evento.type == KEYDOWN:
-                if evento.key == K_SPACE:
-                    # Criar um disparo da posição da nave
-                    tiro = Disparo(nave.rect.center, nave.direction)
-                    tiros.add(tiro)
-                    todas_as_sprites.add(tiro)
+            if event.type == KEYDOWN:
+                if event.key == K_SPACE and ship.alive and not game_over:
+                    shot = Shot(ship.rect.center, ship.direction)
+                    shots.add(shot)
+                    all_sprites.add(shot)
 
-        # Atualizar todos os sprites
-        todas_as_sprites.update()
+        if ship.alive and not game_over:
+            all_sprites.update()
 
-        # Desenhar o fundo
-        tela.blit(fundo, (0, 0))
+            # Verifique a colisão entre asteroides e a nave usando a máscara de colisão
+            for asteroid in asteroids:
+                if pygame.sprite.collide_mask(ship, asteroid):
+                    damage = asteroid.size // 5  # Damage based on asteroid size
+                    ship.lose_shield(damage)
+                    
+                    # Encontre o ponto exato de colisão
+                    offset_x = asteroid.rect.x - ship.rect.x
+                    offset_y = asteroid.rect.y - ship.rect.y
+                    overlap = ship.mask.overlap(asteroid.mask, (offset_x, offset_y))
+                    if overlap:
+                        collision_point = (ship.rect.x + overlap[0], ship.rect.y + overlap[1])
+                        explosion = Explosion(collision_point, size=max(100, asteroid.size))
+                        explosions.add(explosion)
+                        all_sprites.add(explosion)
+                    
+                    asteroid.reset_position()
 
-        # Desenhar todos os sprites na tela
-        todas_as_sprites.draw(tela)
+            # Verifique a colisão entre tiros e asteroides
+            for shot in shots:
+                hit_asteroids = pygame.sprite.spritecollide(shot, asteroids, False, pygame.sprite.collide_mask)
+                for asteroid in hit_asteroids:
+                    # Encontre o ponto exato de colisão
+                    offset_x = asteroid.rect.x - shot.rect.x
+                    offset_y = asteroid.rect.y - shot.rect.y
+                    overlap = shot.mask.overlap(asteroid.mask, (offset_x, offset_y))
+                    if overlap:
+                        collision_point = (shot.rect.x + overlap[0], shot.rect.y + overlap[1])
+                        explosion = Explosion(collision_point, size=asteroid.size)
+                        explosions.add(explosion)
+                        all_sprites.add(explosion)
+                    
+                    shot.kill()
+                    asteroid.reset_position()
 
-        # Atualizar a tela
+            if ship.shield <= 0:
+                game_over = True
+                ship_explosion = Explosion(ship.rect.center, size=200)  # Explosão quando o escudo da nave chega a 0
+                explosions.add(ship_explosion)
+                all_sprites.add(ship_explosion)
+
+        explosions.update()  # Atualizar explosões separadamente
+
+        screen.blit(background, (0, 0))
+        all_sprites.draw(screen)
+
+        # Contador de escudo de saque
+        shield_text = font.render(f"Energia do Escudo: {max(ship.shield, 0)}", True, WHITE)
+        screen.blit(shield_text, (10, 10))
+
+        if game_over:
+            screen.blit(game_over_image, ((SCREEN_WIDTH - game_over_image.get_width()) // 2,
+                                          (SCREEN_HEIGHT - game_over_image.get_height()) // 2))
+
         pygame.display.flip()
+        clock.tick(60)
 
-        # Controla a quantidade de frames por segundo (FPS)
-        relogio.tick(60)
-
-# Executa o jogo
+# Execute o jogo
 if __name__ == "__main__":
-    jogo()
+    game()
